@@ -1,18 +1,18 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class TimerScript : MonoBehaviour
 {
     public float totalTime = 60f;
     public TMP_Text timerText;
-    //public TMP_Text timerTextBG;
     public bool gameEnd = false;
-    public ButterChurn Butt;
-    public EndstateManager endstateManager;
 
+    // Support for two churn controllers
+    public ButterChurn churn1;
+    public ButterChurn churn2;
+
+    public EndstateManager endstateManager;
 
     public void StartFunction()
     {
@@ -21,22 +21,26 @@ public class TimerScript : MonoBehaviour
 
     private IEnumerator StartCountdown()
     {
-        if (gameEnd != true)
+        if (!gameEnd)
         {
             float timeLeft = totalTime;
+
             while (timeLeft > 0)
             {
                 yield return new WaitForSeconds(1f);
+
                 timeLeft -= 1f;
                 UpdateTimerText(timeLeft);
+
+                // When timer hits 10 seconds, both churns enter sicko mode
                 if (timeLeft == 10)
                 {
-                    Butt.sickomode = true;
+                    if (churn1 != null) churn1.sickomode = true;
+                    if (churn2 != null) churn2.sickomode = true;
                 }
             }
         }
 
-        // Countdown finished, do something here
         Debug.Log("Countdown finished!");
         endstateManager.ButterWin();
     }
@@ -46,6 +50,5 @@ public class TimerScript : MonoBehaviour
         float minutes = Mathf.FloorToInt(time / 60);
         float seconds = Mathf.FloorToInt(time % 60);
         timerText.text = string.Format("{0:0}:{1:0}", minutes, seconds);
-        //timerTextBG.text = string.Format("{0:0}:{1:0}", minutes, seconds);
     }
 }
