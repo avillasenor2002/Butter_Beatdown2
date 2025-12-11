@@ -10,22 +10,19 @@ public class StartingCountdownScript : MonoBehaviour
     public GameObject startingUI;
 
     [Header("Churns")]
-    public ButterChurn churnA;   // First churn
-    public ButterChurn churnB;   // Second churn
+    public ButterChurn churnA;
+    public ButterChurn churnB;
 
     [Header("Other")]
     public TimerScript timer;
 
     [Header("Audio")]
-    public AudioSource countdownEndAudio; // Audio to play when countdown ends
-
-    [Header("Options")]
-    public bool autoStart = false; // OPTIONAL: auto-trigger countdown at Start()
+    public AudioSource countdownEndAudio;
 
     private void Start()
     {
-        if (autoStart)
-            begin();
+        // Always begin countdown on scene start
+        begin();
     }
 
     public void begin()
@@ -51,24 +48,22 @@ public class StartingCountdownScript : MonoBehaviour
 
         startingUI.SetActive(false);
 
-        // Start both churns
+        // Start churns
         if (churnA != null) churnA.isStarted = true;
         if (churnB != null) churnB.isStarted = true;
 
-        // Start the main timer
+        // Start main timer
         if (timer != null) timer.StartFunction();
 
-        // Play audio after countdown ends
+        // Play audio when countdown finishes
         if (countdownEndAudio != null)
-        {
             countdownEndAudio.Play();
-        }
     }
 
     public void ReloadScene()
     {
-        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
-        SceneManager.LoadScene(currentSceneIndex);
+        int index = SceneManager.GetActiveScene().buildIndex;
+        SceneManager.LoadScene(index);
     }
 
     public void ExitGame()

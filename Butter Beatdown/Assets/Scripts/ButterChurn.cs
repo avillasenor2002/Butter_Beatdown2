@@ -52,21 +52,20 @@ public class ButterChurn : MonoBehaviour
     private KeyCode emergencyLeftKey;
     private KeyCode emergencyRightKey;
 
-    // Separate Y positions per player
     private float downPosY_Player1 = -1f;
     private float upPosY_Player1 = 2.19f;
 
     private float downPosY_Player2 = -1.5f;
     private float upPosY_Player2 = 2.4f;
 
+    public GameObject SickoModeUI;   // UI that should blink during sicko mode
+    private Coroutine sickoBlinkRoutine;
+
 
     void Start()
     {
         AssignControls();
-
-        // FIX 1: Ensure correct subtraction rate for both players from the start
         CurrentsubtractionInterval = subtractionInterval;
-
         UpdateScoreText();
         StartCoroutine(SubtractVariable());
     }
@@ -97,8 +96,6 @@ public class ButterChurn : MonoBehaviour
         if (!isStarted)
             return;
 
-
-        // ======= NORMAL CHURNING =======
         if (danger < maxdanger)
         {
             if (Input.GetKeyDown(churnKey) && !isemergency)
@@ -144,7 +141,6 @@ public class ButterChurn : MonoBehaviour
         danger = Mathf.Clamp(danger, 0, 50);
 
 
-        // ======= EMERGENCY MODE =======
         if (isemergency)
         {
             CloggedUI.SetActive(true);
@@ -175,7 +171,6 @@ public class ButterChurn : MonoBehaviour
 
 
 
-        // ======= SPEED LOGIC =======
         if (score >= scoreCap1 && score < scoreCap2 && !sickomode)
         {
             CurrentsubtractionInterval = subtractionInterval;
@@ -211,18 +206,70 @@ public class ButterChurn : MonoBehaviour
             }
         }
 
+        // ======= SICKO MODE UI BLINK =======
+        if (sickomode)
+        {
+            if (sickoBlinkRoutine == null)
+                sickoBlinkRoutine = StartCoroutine(SickoBlink());
+        }
+        else
+        {
+            if (sickoBlinkRoutine != null)
+            {
+                StopCoroutine(sickoBlinkRoutine);
+                sickoBlinkRoutine = null;
+            }
+
+            if (SickoModeUI != null)
+                SickoModeUI.SetActive(false); // ensure UI stays off
+        }
+
 
         DangerUI.SetActive(danger >= 35);
     }
 
+    private IEnumerator SickoBlink()
+    {
+        while (sickomode)
+        {
+            if (SickoModeUI != null)
+                SickoModeUI.SetActive(!SickoModeUI.activeSelf);
+
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        // Safety: ensure UI is off when exiting
+        if (SickoModeUI != null)
+            SickoModeUI.SetActive(false);
+    }
 
 
     // ======= SCORE =======
     public void AddScore(int amount)
     {
+        // NEW RULE: Sicko mode overrides everything
+        if (sickomode)
+        {
+            amount = amount * 3;
+        }
+        else
+        {
+            // Existing fill-based modifiers
+            if (FillUI != null)
+            {
+                float fill = FillUI.fillAmount;
+
+                if (fill > 0.685f)
+                    amount = amount * 2;
+                else if (fill < 0.316f)
+                    amount = amount / 2;
+            }
+        }
+
         score += amount;
         UpdateScoreText();
     }
+
 
     public void SubtractScore(int amount)
     {
@@ -239,7 +286,6 @@ public class ButterChurn : MonoBehaviour
 
 
 
-    // ======= SUBTRACTION LOOP =======
     private IEnumerator SubtractVariable()
     {
         while (true)
@@ -253,7 +299,6 @@ public class ButterChurn : MonoBehaviour
 
 
 
-    // ======= SPEED-UP FLASH =======
     IEnumerator ActivateSpriteCoroutine()
     {
         SpeedUP.SetActive(true);
