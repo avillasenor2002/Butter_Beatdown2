@@ -2,59 +2,54 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class EndstateManager : MonoBehaviour
 {
-    //public CatBalanceScript PlayerAlphaHP;
-    //public MoveControler PlayerAlphaMovement;
-
-    //public CatBalanceScript PlayerBravoHP;
-    //public MoveControler PlayerBravoMovement;
-
     public TimerScript timer;
     public ButterChurn Butt;
     public GameObject EndUI;
     public TMP_Text scoreText;
 
-    // Start is called before the first frame update
+    [Header("High Score System")]
+    public ScoreManager scoreManager; // Assign in inspector
+
+    [Header("Next Scene")]
+    public string nextSceneName; // Scene to load after hold
+
+    // Called when butter churn wins
     public void ButterWin()
     {
-       //Debug.Log("Player Alpha Wins");
-        /*PlayerAlphaMovement.isemptying = true;
-        if (PlayerBravoHP != null )
-        {
-            PlayerBravoMovement.isemptying = true;
-        }*/
         EndUI.SetActive(true);
 
         if (Butt.score <= 300)
-        {
             scoreText.text = "D";
-        }
-
-        if (Butt.score > 300 && Butt.score <= 600)
-        {
+        else if (Butt.score > 300 && Butt.score <= 600)
             scoreText.text = "C";
-        }
-
-        if (Butt.score > 600 && Butt.score <= 900)
-        {
+        else if (Butt.score > 600 && Butt.score <= 900)
             scoreText.text = "B";
-        }
-
-        if (Butt.score > 900 && Butt.score <= 1000)
-        {
+        else if (Butt.score > 900 && Butt.score <= 1000)
             scoreText.text = "A";
-        }
-
-        if(Butt.score > 1000 && Butt.score <= 1150)
-        {
+        else if (Butt.score > 1000 && Butt.score <= 1150)
             scoreText.text = "S";
-        }
-
-        if (Butt.score > 1150)
-        {
+        else if (Butt.score > 1150)
             scoreText.text = "S+";
+
+        // Record high score
+        if (scoreManager != null)
+            scoreManager.RecordScore(Butt.score);
+
+        // ===== FIX: Assign winning churn =====
+        if (Butt != null)
+        {
+            Butt.winningChurn = Butt;       // mark this churn as the winner
+            Butt.canInteract = false;       // disable normal churning
+            Butt.holdTimer = 0f;            // reset hold timer
+            if (Butt.endHoldFillUI != null)
+                Butt.endHoldFillUI.fillAmount = 0f;
+
+            // Assign the scene to load
+            Butt.nextSceneName = nextSceneName;
         }
     }
 
@@ -62,6 +57,5 @@ public class EndstateManager : MonoBehaviour
     {
         Debug.Log("Calculating Winner");
         bool istie = false;
-        
     }
 }

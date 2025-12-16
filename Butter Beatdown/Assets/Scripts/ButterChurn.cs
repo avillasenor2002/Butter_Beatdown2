@@ -2,6 +2,7 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class ButterChurn : MonoBehaviour
 {
@@ -58,9 +59,28 @@ public class ButterChurn : MonoBehaviour
     private float downPosY_Player2 = -1.5f;
     private float upPosY_Player2 = 2.4f;
 
-    public GameObject SickoModeUI;   // UI that should blink during sicko mode
+    public GameObject SickoModeUI;
     private Coroutine sickoBlinkRoutine;
 
+    [Header("Demo / End Sequence")]
+    public bool demoMode = false;
+    public TMP_Text demoReadyText;
+    public string demoNextSceneName;
+    public Image fadeImage; // UPDATED: fade now affects this Image
+    public float fadeDuration = 0.75f;
+    public float sceneLoadDelay = 1.25f;
+
+    private static bool demoPlayer1Ready;
+    private static bool demoPlayer2Ready;
+    private static bool demoTransitionStarted;
+
+    private bool gameEnded = false;
+    public ButterChurn winningChurn;
+    public float holdDuration = 5f;
+    public float holdTimer = 0f;
+    public Image endHoldFillUI;
+    public bool canInteract = true;
+    public string nextSceneName;
 
     void Start()
     {
@@ -68,8 +88,13 @@ public class ButterChurn : MonoBehaviour
         CurrentsubtractionInterval = subtractionInterval;
         UpdateScoreText();
         StartCoroutine(SubtractVariable());
-    }
 
+        if (demoMode && demoReadyText != null)
+        {
+            demoReadyText.text = "Not Ready";
+            demoReadyText.gameObject.SetActive(true);
+        }
+    }
 
     void AssignControls()
     {
@@ -87,8 +112,6 @@ public class ButterChurn : MonoBehaviour
         }
     }
 
-
-
     void Update()
     {
         FillUI.fillAmount = danger / maxdanger;
@@ -96,80 +119,88 @@ public class ButterChurn : MonoBehaviour
         if (!isStarted)
             return;
 
-        if (danger < maxdanger)
+        if (canInteract)
         {
-            if (Input.GetKeyDown(churnKey) && !isemergency)
+            if (danger < maxdanger)
             {
-                float newY = (playerID == PlayerID.Player1) ? downPosY_Player1 : downPosY_Player2;
+                if (Input.GetKeyDown(churnKey) && !isemergency)
+                {
+                    float newY = (playerID == PlayerID.Player1) ? downPosY_Player1 : downPosY_Player2;
+                    transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+                    transform.rotation = Quaternion.Euler(0, 0, 0);
+                    danger += 2;
+                    AddScore(5);
+                }
 
-                transform.position = new Vector3(
-                    transform.position.x,
-                    newY,
-                    transform.position.z
-                );
-
-                transform.rotation = Quaternion.Euler(0, 0, 0);
-
-                danger += 2;
-                AddScore(5);
+                if (danger <= 25) DangerButt.sprite = NormalChurn;
+                else if (danger > 25 && danger <= 35) DangerButt.sprite = MidChurn;
+                else DangerButt.sprite = DangerChurn;
+            }
+            else
+            {
+                isemergency = true;
             }
 
-            if (danger <= 25) DangerButt.sprite = NormalChurn;
-            else if (danger > 25 && danger <= 35) DangerButt.sprite = MidChurn;
-            else DangerButt.sprite = DangerChurn;
-        }
-        else
-        {
-            isemergency = true;
-        }
-
-
-        if (Input.GetKeyUp(churnKey) && !isemergency)
-        {
-            float newY = (playerID == PlayerID.Player1) ? upPosY_Player1 : upPosY_Player2;
-
-            transform.position = new Vector3(
-                transform.position.x,
-                newY,
-                transform.position.z
-            );
-
-            part.Play();
-        }
-
-
-        danger = Mathf.Clamp(danger, 0, 50);
-
-
-        if (isemergency)
-        {
-            CloggedUI.SetActive(true);
-
-            if (Input.GetKeyDown(emergencyRightKey) && isright)
+            if (Input.GetKeyUp(churnKey) && !isemergency)
             {
-                danger -= 2;
-                isright = false;
-
-                transform.rotation = Quaternion.Euler(0, 0, -37.6f);
+                float newY = (playerID == PlayerID.Player1) ? upPosY_Player1 : upPosY_Player2;
+                transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+                part.Play();
             }
 
-            if (Input.GetKeyDown(emergencyLeftKey) && !isright)
+            danger = Mathf.Clamp(danger, 0, 50);
+
+            if (isemergency)
             {
-                danger -= 2;
-                isright = true;
+                CloggedUI.SetActive(true);
 
-                transform.rotation = Quaternion.Euler(0, 0, 37.6f);
+                if (demoMode)
+                {
+                    if (demoReadyText != null)
+                    {
+                        demoReadyText.text = "Ready";
+                        demoReadyText.gameObject.SetActive(true);
+                    }
+                    if (playerID == PlayerID.Player1)
+                        demoPlayer1Ready = true;
+                    else
+                        demoPlayer2Ready = true;
+
+                    if (demoPlayer1Ready && demoPlayer2Ready && !demoTransitionStarted)
+                    {
+                        demoTransitionStarted = true;
+                        StartCoroutine(DemoEndSequence());
+                    }
+                }
+
+                if (Input.GetKeyDown(emergencyRightKey) && isright)
+                {
+                    danger -= 2;
+                    isright = false;
+                    transform.rotation = Quaternion.Euler(0, 0, -37.6f);
+                }
+
+                if (Input.GetKeyDown(emergencyLeftKey) && !isright)
+                {
+                    danger -= 2;
+                    isright = true;
+                    transform.rotation = Quaternion.Euler(0, 0, 37.6f);
+                }
+
+                if (danger <= 0)
+                    isemergency = false;
             }
+            else
+            {
+                CloggedUI.SetActive(false);
 
-            if (danger <= 0)
-                isemergency = false;
+                if (demoMode && demoReadyText != null)
+                {
+                    demoReadyText.text = "Not Ready";
+                    demoReadyText.gameObject.SetActive(true);
+                }
+            }
         }
-        else
-        {
-            CloggedUI.SetActive(false);
-        }
-
-
 
         if (score >= scoreCap1 && score < scoreCap2 && !sickomode)
         {
@@ -206,7 +237,6 @@ public class ButterChurn : MonoBehaviour
             }
         }
 
-        // ======= SICKO MODE UI BLINK =======
         if (sickomode)
         {
             if (sickoBlinkRoutine == null)
@@ -221,11 +251,41 @@ public class ButterChurn : MonoBehaviour
             }
 
             if (SickoModeUI != null)
-                SickoModeUI.SetActive(false); // ensure UI stays off
+                SickoModeUI.SetActive(false);
         }
 
-
         DangerUI.SetActive(danger >= 35);
+
+        // End-state hold logic
+        if (!demoMode && !canInteract && winningChurn != null && endHoldFillUI != null)
+        {
+            if (Input.GetKey(winningChurn.churnKey))
+            {
+                holdTimer += Time.deltaTime;
+                endHoldFillUI.fillAmount = holdTimer / holdDuration;
+
+                if (holdTimer >= holdDuration)
+                {
+                    if (!string.IsNullOrEmpty(nextSceneName))
+                        SceneManager.LoadScene(nextSceneName);
+                }
+            }
+            else
+            {
+                holdTimer = Mathf.Max(0, holdTimer - Time.deltaTime);
+                endHoldFillUI.fillAmount = holdTimer / holdDuration;
+            }
+        }
+    }
+
+    private void EnterEndState(ButterChurn winner)
+    {
+        winningChurn = winner;
+        canInteract = false; // stop normal churning
+        holdTimer = 0f;
+
+        if (endHoldFillUI != null)
+            endHoldFillUI.fillAmount = 0f;
     }
 
     private IEnumerator SickoBlink()
@@ -238,38 +298,24 @@ public class ButterChurn : MonoBehaviour
             yield return new WaitForSeconds(0.5f);
         }
 
-        // Safety: ensure UI is off when exiting
         if (SickoModeUI != null)
             SickoModeUI.SetActive(false);
     }
 
-
-    // ======= SCORE =======
     public void AddScore(int amount)
     {
-        // NEW RULE: Sicko mode overrides everything
         if (sickomode)
+            amount *= 3;
+        else if (FillUI != null)
         {
-            amount = amount * 3;
-        }
-        else
-        {
-            // Existing fill-based modifiers
-            if (FillUI != null)
-            {
-                float fill = FillUI.fillAmount;
-
-                if (fill > 0.685f)
-                    amount = amount * 2;
-                else if (fill < 0.316f)
-                    amount = amount / 2;
-            }
+            float fill = FillUI.fillAmount;
+            if (fill > 0.685f) amount *= 2;
+            else if (fill < 0.316f) amount /= 2;
         }
 
         score += amount;
         UpdateScoreText();
     }
-
 
     public void SubtractScore(int amount)
     {
@@ -284,20 +330,15 @@ public class ButterChurn : MonoBehaviour
         FinalscoreText.text = score.ToString();
     }
 
-
-
     private IEnumerator SubtractVariable()
     {
         while (true)
         {
             yield return new WaitForSeconds(CurrentsubtractionInterval);
-
             if (danger < 50)
                 danger -= subtractionAmount;
         }
     }
-
-
 
     IEnumerator ActivateSpriteCoroutine()
     {
@@ -312,5 +353,59 @@ public class ButterChurn : MonoBehaviour
         SpeedUP.SetActive(true);
         yield return new WaitForSeconds(1.5f);
         SpeedUP.SetActive(false);
+    }
+
+    private IEnumerator DemoEndSequence()
+    {
+        ButterChurn[] churns = FindObjectsOfType<ButterChurn>();
+        ButterChurn player1 = null;
+        ButterChurn player2 = null;
+
+        foreach (var c in churns)
+        {
+            if (c.playerID == PlayerID.Player1) player1 = c;
+            else if (c.playerID == PlayerID.Player2) player2 = c;
+        }
+
+        if (player1 != null && player2 != null)
+        {
+            ButterChurn winner = (player1.score >= player2.score) ? player1 : player2;
+
+            // Block all churns and assign winning churn
+            foreach (var c in churns)
+                c.EnterEndState(winner);
+
+            // Record both scores
+            ScoreManager scoreManager = FindObjectOfType<ScoreManager>();
+            if (scoreManager != null)
+            {
+                scoreManager.RecordScore(player1.score);
+                scoreManager.RecordScore(player2.score);
+            }
+        }
+
+        gameEnded = true;
+
+        if (Camera.main != null)
+            Camera.main.transform.position += Random.insideUnitSphere * 0.15f;
+
+        if (fadeImage != null)
+        {
+            float t = 0;
+            Color c = fadeImage.color;
+            while (t < fadeDuration)
+            {
+                t += Time.deltaTime;
+                c.a = Mathf.Lerp(0, 1, t / fadeDuration);
+                fadeImage.color = c;
+                yield return null;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(demoNextSceneName))
+        {
+            yield return new WaitForSeconds(sceneLoadDelay);
+            SceneManager.LoadScene(demoNextSceneName);
+        }
     }
 }
