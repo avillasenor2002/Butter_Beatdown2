@@ -62,11 +62,18 @@ public class ButterChurn : MonoBehaviour
     public GameObject SickoModeUI;
     private Coroutine sickoBlinkRoutine;
 
+    [Header("Churn Audio")]
+    public AudioSource churnAudioSource;
+    public AudioClip[] churnSounds;
+    public AudioClip cloggedSound;
+
+    private bool cloggedSoundPlayed = false;
+
     [Header("Demo / End Sequence")]
     public bool demoMode = false;
     public TMP_Text demoReadyText;
     public string demoNextSceneName;
-    public Image fadeImage; // UPDATED: fade now affects this Image
+    public Image fadeImage;
     public float fadeDuration = 0.75f;
     public float sceneLoadDelay = 1.25f;
 
@@ -130,6 +137,13 @@ public class ButterChurn : MonoBehaviour
                     transform.rotation = Quaternion.Euler(0, 0, 0);
                     danger += 2;
                     AddScore(5);
+
+                    if (churnAudioSource != null && churnSounds != null && churnSounds.Length > 0)
+                    {
+                        churnAudioSource.PlayOneShot(
+                            churnSounds[Random.Range(0, churnSounds.Length)]
+                        );
+                    }
                 }
 
                 if (danger <= 25) DangerButt.sprite = NormalChurn;
@@ -153,6 +167,12 @@ public class ButterChurn : MonoBehaviour
             if (isemergency)
             {
                 CloggedUI.SetActive(true);
+
+                if (!cloggedSoundPlayed && churnAudioSource != null && cloggedSound != null)
+                {
+                    churnAudioSource.PlayOneShot(cloggedSound);
+                    cloggedSoundPlayed = true;
+                }
 
                 if (demoMode)
                 {
@@ -193,6 +213,7 @@ public class ButterChurn : MonoBehaviour
             else
             {
                 CloggedUI.SetActive(false);
+                cloggedSoundPlayed = false;
 
                 if (demoMode && demoReadyText != null)
                 {
@@ -256,7 +277,6 @@ public class ButterChurn : MonoBehaviour
 
         DangerUI.SetActive(danger >= 35);
 
-        // End-state hold logic
         if (!demoMode && !canInteract && winningChurn != null && endHoldFillUI != null)
         {
             if (Input.GetKey(winningChurn.churnKey))
@@ -281,7 +301,7 @@ public class ButterChurn : MonoBehaviour
     private void EnterEndState(ButterChurn winner)
     {
         winningChurn = winner;
-        canInteract = false; // stop normal churning
+        canInteract = false;
         holdTimer = 0f;
 
         if (endHoldFillUI != null)
@@ -371,11 +391,9 @@ public class ButterChurn : MonoBehaviour
         {
             ButterChurn winner = (player1.score >= player2.score) ? player1 : player2;
 
-            // Block all churns and assign winning churn
             foreach (var c in churns)
                 c.EnterEndState(winner);
 
-            // Record both scores
             ScoreManager scoreManager = FindObjectOfType<ScoreManager>();
             if (scoreManager != null)
             {

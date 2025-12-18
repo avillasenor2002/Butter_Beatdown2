@@ -17,7 +17,10 @@ public class StartingCountdownScript : MonoBehaviour
     public TimerScript timer;
 
     [Header("Audio")]
-    public AudioSource countdownEndAudio;
+    public AudioSource countdownAudioSource;   // plays countdown SFX
+    public AudioClip countdownTickClip;        // plays on 3, 2, 1
+    public AudioClip countdownGoClip;          // plays on Go
+    public AudioSource mainMusicAudioSource;   // main music source
 
     private void Start()
     {
@@ -35,15 +38,23 @@ public class StartingCountdownScript : MonoBehaviour
         startingUI.SetActive(true);
 
         countdownText.text = "3";
+        if (countdownAudioSource != null && countdownTickClip != null)
+            countdownAudioSource.PlayOneShot(countdownTickClip);
         yield return new WaitForSecondsRealtime(1f);
 
         countdownText.text = "2";
+        if (countdownAudioSource != null && countdownTickClip != null)
+            countdownAudioSource.PlayOneShot(countdownTickClip);
         yield return new WaitForSecondsRealtime(1f);
 
         countdownText.text = "1";
+        if (countdownAudioSource != null && countdownTickClip != null)
+            countdownAudioSource.PlayOneShot(countdownTickClip);
         yield return new WaitForSecondsRealtime(1f);
 
         countdownText.text = "Go!";
+        if (countdownAudioSource != null && countdownGoClip != null)
+            countdownAudioSource.PlayOneShot(countdownGoClip);
         yield return new WaitForSecondsRealtime(1f);
 
         startingUI.SetActive(false);
@@ -55,9 +66,9 @@ public class StartingCountdownScript : MonoBehaviour
         // Start main timer
         if (timer != null) timer.StartFunction();
 
-        // Play audio when countdown finishes
-        if (countdownEndAudio != null)
-            countdownEndAudio.Play();
+        // Start main music
+        if (mainMusicAudioSource != null && !mainMusicAudioSource.isPlaying)
+            mainMusicAudioSource.Play();
     }
 
     public void ReloadScene()
